@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Iterator;
@@ -17,6 +18,7 @@ import java.util.Iterator;
 public class Server {
     private ServerSocketChannel serverSocketChannel;
     private Selector selector;
+    private static final int PORT = 9999;
 
     public static void main(String[] args) {
         Server server = new Server();
@@ -25,77 +27,89 @@ public class Server {
 
     public Server() {
         try {
-            serverSocketChannel = ServerSocketChannel.open();
-            selector = Selector.open();
-
-            serverSocketChannel.configureBlocking(false);
-            serverSocketChannel.bind(new InetSocketAddress(9999));
-            serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
-            printInfo("聊天室启动......");
-            printInfo("聊天室初始化端口 9999");
-            printInfo("聊天室初始化网络ip " + serverSocketChannel.getLocalAddress());
+            System.out.println("服务端启动");
+            System.out.println("服务端初始化端口：9999");
+            //开启socket监听通道
+            this.serverSocketChannel = ServerSocketChannel.open();
+            //开启选择器
+            this.selector = Selector.open();
+            //设置非阻塞
+            this.serverSocketChannel.configureBlocking(false);
+            //绑定端口
+            this.serverSocketChannel.bind(new InetSocketAddress(PORT));
+            //注册选择器，选择器监听ACCEPT事件
+            this.serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
     public void start() {
         try {
             while (true) {
-                if (selector.select(2000) == 0) {
-                    printInfo("Server：非阻塞获取客户端连接，doSomethingElse()");
+                if (0 == selector.select(1000)) {
+                    System.out.println("没有客户端连接，我去搞点兼职");
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
                     continue;
                 }
                 Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
-                while (iterator.hasNext()) {
+                if (iterator.hasNext()) {
                     SelectionKey key = iterator.next();
-                    //连接请求事件
                     if (key.isAcceptable()) {
-                        SocketChannel socketChannel = serverSocketChannel.accept();
-                        socketChannel.configureBlocking(false);
-                        //与客户端建立连接
-                        socketChannel.register(selector, SelectionKey.OP_READ);
-                        printInfo(socketChannel.getRemoteAddress().toString() + "上线了");
+                        SocketChannel clientSocketChannel = serverSocketChannel.accept();
+                        clientSocketChannel.configureBlocking(false);
+                        clientSocketChannel.register(selector, SelectionKey.OP_READ);
+                        System.out.println(clientSocketChannel.getRemoteAddress().toString() + "上线了");
                     }
                     if (key.isReadable()) {
-                        //读取数据
                         readMsg(key);
                     }
-                    //将key删掉，防止重复处理，但是外层还有循环，当客户端下线后还是会重复处理key
+                    //将当前key移除，防止重复处理
                     iterator.remove();
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-
     }
 
+    /**
+     * 读取客户端发来的消息并广播
+     *
+     * @param key
+     * @throws IOException
+     */
     private void readMsg(SelectionKey key) throws IOException {
-        SocketChannel channel = (SocketChannel) key.channel();
+        SocketChannel clientSocketChannel = (SocketChannel) key.channel();
         ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-        int len;
-        if ((len = channel.read(byteBuffer)) > 0) {
-            String msg = new String(byteBuffer.array());
+        int read = clientSocketChannel.read(byteBuffer);
+        if (read > 0) {
+            String msg = new String(byteBuffer.array()).trim();
+            //打印消息
             printInfo(msg);
-            broadcast(channel, msg);
+            //全员广播消息，除发送客户端外
+            broadcast(clientSocketChannel, msg);
         }
     }
 
-    private void broadcast(SocketChannel channel, String msg) throws IOException {
-        printInfo("服务器广播了消息");
+    private void broadcast(SocketChannel clientSocketChannel, String msg) throws IOException {
+        System.out.println("服务器广播消息");
         for (SelectionKey selectionKey : selector.keys()) {
-            Channel targetChannel = selectionKey.channel();
-            if (targetChannel instanceof SocketChannel && !targetChannel.equals(channel)) {
-                ByteBuffer buffer = ByteBuffer.wrap(msg.getBytes());
-                ((SocketChannel) targetChannel).write(buffer);
+            SelectableChannel targetChannel = selectionKey.channel();
+            if (targetChannel instanceof SocketChannel && targetChannel != clientSocketChannel) {
+                SocketChannel destChannel = (SocketChannel) targetChannel;
+                ByteBuffer wrap = ByteBuffer.wrap(msg.getBytes(StandardCharsets.UTF_8));
+                destChannel.write(wrap);
             }
         }
     }
 
-    private void printInfo(String str) { //往控制台打印消息
+    private void printInfo(String msg) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        System.out.println("[" + sdf.format(new Date()) + "] -> " + str);
+        System.out.println("[" + sdf.format(new Date()) + "]->" + msg);
     }
-
 }

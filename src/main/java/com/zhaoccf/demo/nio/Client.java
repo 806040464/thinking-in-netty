@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 
 /**
  * @author zhaoccf
@@ -16,25 +17,26 @@ public class Client {
         start();
     }
 
-    public static void start() throws IOException, InterruptedException {
-        SocketChannel channel = null;
-        ByteBuffer buffer = null;
-        try {
-            channel = SocketChannel.open();
-            channel.configureBlocking(false);
-            InetSocketAddress address = new InetSocketAddress("127.0.0.1", 9999);
-            if (!channel.connect(address)) {
-                while (!channel.finishConnect()) {
-                    System.out.println("等待客户端连接期间，doSomethingElse()");
-                }
+    public static void start() throws IOException {
+        //开启网络通道
+        SocketChannel socketChannel = SocketChannel.open();
+        //设置非阻塞
+        socketChannel.configureBlocking(false);
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", 9999);
+        //连接服务器
+        if (!socketChannel.connect(address)) {
+            //重试连接
+            while (!socketChannel.finishConnect()) {
+                System.out.println("Client：金莲连不上，做点别的事");
             }
-            String msg = "你好，金莲，大郎在家吗？";
-            buffer = ByteBuffer.wrap(msg.getBytes());
-            channel.write(buffer);
+        }
+        ByteBuffer byteBuffer = ByteBuffer.wrap("你好，金莲，大郎在家吗？".getBytes(StandardCharsets.UTF_8));
+        //发送消息
+        socketChannel.write(byteBuffer);
+        try {
             Thread.sleep(10000);
-        } finally {
-            channel.close();
-            buffer.clear();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 }

@@ -1,6 +1,5 @@
 package com.zhaoccf.demo.nio;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -16,56 +15,65 @@ import java.nio.charset.StandardCharsets;
  */
 public class Demo {
     public static void main(String[] args) throws Exception {
-        //writeFile();
-        //readFile();
-        //copyFileByBio();
+//        writeFile();
+//        readFile();
+//        copyFileByBio();
         copyFileByNio();
     }
 
     public static void writeFile() throws IOException {
+        //创建输出流
         FileOutputStream fos = new FileOutputStream("basic.txt");
-        FileChannel fc = fos.getChannel();
-        ByteBuffer buffer = ByteBuffer.allocate(1024);
-        buffer.put("HelloJava".getBytes(StandardCharsets.UTF_8));
-        buffer.flip();
-        fc.write(buffer);
+        //从流中获取通道
+        FileChannel channel = fos.getChannel();
+        //创建缓冲区并放入数据
+        ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+        byteBuffer.put("HelloJava".getBytes(StandardCharsets.UTF_8));
+        //写数据前需要翻转数据区，写之前position为HelloJava的最后位置，limit为1024，翻转后limit为HelloJava的最后位置，position为0，才能写HelloJava
+        byteBuffer.flip();
+        //将缓冲区数据写入通道
+        channel.write(byteBuffer);
+        //关闭
         fos.close();
     }
 
     public static void readFile() throws IOException {
-        File file = new File("basic.txt");
-        FileInputStream fis = new FileInputStream(file);
-        FileChannel fc = fis.getChannel();
-        ByteBuffer buffer = ByteBuffer.allocate((int) file.length());
-        fc.read(buffer);
-        System.out.println(new String(buffer.array(), StandardCharsets.UTF_8));
+        FileInputStream fis = new FileInputStream("basic.txt");
+        FileChannel channel = fis.getChannel();
+        ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+        channel.read(byteBuffer);
+        System.out.println(new String(byteBuffer.array()).trim());
         fis.close();
     }
 
     public static void copyFileByBio() throws IOException {
         FileInputStream fis = new FileInputStream("basic.txt");
         FileOutputStream fos = new FileOutputStream("basic2.txt");
-        byte[] b = new byte[1024];
+        byte[] bytes = new byte[1024];
         while (true) {
-            int len;
-            if ((len = fis.read(b)) == -1) {
+            int read = fis.read(bytes);
+            if (-1 == read) {
                 break;
             }
-            fos.write(b, 0, len);
+            fos.write(bytes, 0, read);
         }
+        fis.close();
+        fos.close();
     }
 
     public static void copyFileByNio() throws IOException {
         FileInputStream fis = new FileInputStream("basic.txt");
         FileOutputStream fos = new FileOutputStream("basic3.txt");
+        FileOutputStream fos2 = new FileOutputStream("basic4.txt");
 
-        FileChannel fisChannel = fis.getChannel();
-        FileChannel fosChannel = fos.getChannel();
+        FileChannel sourceChannel = fis.getChannel();
+        FileChannel destChannel = fos.getChannel();
+        FileChannel destChannel2 = fos2.getChannel();
 
-        fosChannel.transferFrom(fisChannel, 0, fisChannel.size());
-
-        fis.close();
-        fos.close();
+        //sourceChannel读取数据写入destChannel
+        destChannel.transferFrom(sourceChannel, 0, sourceChannel.size());
+        //sourceChannel读取数据写入destChannel2
+        sourceChannel.transferTo(0, sourceChannel.size(), destChannel2);
     }
 
 }

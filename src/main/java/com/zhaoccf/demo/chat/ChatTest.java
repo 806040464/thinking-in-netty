@@ -10,23 +10,22 @@ import java.util.Scanner;
  */
 public class ChatTest {
     public static void main(String[] args) {
-        Client chatClient = new Client();
-
-        new Thread(()->{
+        Client client = new Client();
+        new Thread(() -> {
             while (true) {
-                chatClient.receiveMsg();
                 try {
-                    Thread.sleep(20);
+                    client.receiveMsg();
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
             }
-        },"monitor-server").start();
+        }).start();
 
         Scanner scanner = new Scanner(System.in);
         while (scanner.hasNextLine()) {
             String msg = scanner.nextLine();
-            chatClient.sendMsg(msg);
+            client.sendMsg(msg);
         }
     }
 }

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 
 /**
  * @author zhaoccf
@@ -19,45 +20,56 @@ public class Client {
 
     public Client() {
         try {
-            socketChannel = SocketChannel.open();
-            socketChannel.configureBlocking(false);
+            //开启网络通道
+            this.socketChannel = SocketChannel.open();
             InetSocketAddress address = new InetSocketAddress(HOST, PORT);
+            //设置非阻塞
+            this.socketChannel.configureBlocking(false);
+            //连接服务器
             if (!socketChannel.connect(address)) {
+                //重试连接
                 while (!socketChannel.finishConnect()) {
-                    System.out.println("等待客户端连接期间，doSomethingElse()");
+                    System.out.println("Client：还没连接上服务器，干点别的");
                 }
             }
-            userName = socketChannel.getLocalAddress().toString();
-            System.out.println("Client" + userName + "is ready!");
+            this.userName = socketChannel.getLocalAddress().toString();
+            System.out.println("Client" + userName + "is Ready!");
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
+    /**
+     * 向服务器发送消息
+     *
+     * @param msg
+     */
     public void sendMsg(String msg) {
         try {
             if ("bye".equalsIgnoreCase(msg)) {
                 socketChannel.close();
-                return;
             }
             msg = userName + "说：" + msg;
-            ByteBuffer byteBuffer = ByteBuffer.wrap(msg.getBytes());
+            ByteBuffer byteBuffer = ByteBuffer.wrap(msg.getBytes(StandardCharsets.UTF_8));
             socketChannel.write(byteBuffer);
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
+    /**
+     * 从服务端接收消息
+     */
     public void receiveMsg() {
         try {
             ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-            int len;
-            if ((len = socketChannel.read(byteBuffer)) > 0) {
+            int read = socketChannel.read(byteBuffer);
+            if (read > 0) {
                 String msg = new String(byteBuffer.array()).trim();
                 System.out.println(msg);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 }
