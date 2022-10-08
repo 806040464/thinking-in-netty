@@ -339,7 +339,7 @@ Netty提供**异步的、事件驱动的网络应用程序框架和工具**，�
 
 ### 线程模型
 
-![Netty线程模型](src\main\resources\images\Netty线程模型.png "Netty线程模型")
+![Netty线程模型](src/main/resources/images/Netty线程模型.png "Netty线程模型")
 
 ### API 默认的pipeline里的handler有哪些？排序是按添加顺序，是否支持类似order注解定义，Handler如何跳过执行下一个或者说Handler间如何通知？
 
@@ -685,7 +685,7 @@ public class ChatServerHandler extends ChannelInboundHandlerAdapter {
 
 ### 调用流程
 
-![手写RPC调用流程](src\main\resources\images\手写RPC调用流程.png "手写RPC调用流程")
+![手写RPC调用流程](src/main/resources/images/手写RPC调用流程.png "手写RPC调用流程")
 
 ### 核心代码
 
